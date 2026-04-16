@@ -3,16 +3,30 @@
 #include <string.h>
 
 #define COMMANDS_COUNT 1
+#define NOTIFICATION_FILENAME "notifications.txt"
 
-typedef void (*CommandFunc)(char *);
+typedef int (*CommandFunc)(char *);
 
 typedef struct {
     const char* name;
     CommandFunc func;
 } CommandMap;
 
-void add(char *arg) {
-    printf("add %s\n", arg);
+/**
+ * Adds a notification to the notifications file
+ * @param arg the notification to add
+ * @return 0 if successful, 1 if not
+ */
+int add(char *arg) {
+    FILE *file = fopen(NOTIFICATION_FILENAME, "a");
+    if (file == NULL) {
+        printf("failed to open file\n");
+        return 1;
+    }
+
+    fprintf(file, "%s\n", arg);
+    fclose(file);
+    return 0;
 }
 
 CommandMap map[] = {
@@ -44,7 +58,11 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    func_to_run(argv[2]);
+    int result = func_to_run(argv[2]);
+
+    if (result != 0) {
+        return 1;
+    }
 
     return 0;
 }
