@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define COMMANDS_COUNT 1
+#define COMMANDS_COUNT 2
 #define NOTIFICATION_FILENAME "notifications.txt"
 
 typedef int (*CommandFunc)(char *);
@@ -29,10 +29,29 @@ int add(char *arg) {
     return 0;
 }
 
+/**
+ * Clears the notifications file
+ * @return 0 if successful, 1 if not
+ */
+int clear() {
+    FILE *file = fopen(NOTIFICATION_FILENAME, "w");
+    if (file == NULL) {
+        printf("failed to open file\n");
+        return 1;
+    }
+
+    fclose(file);
+    return 0;
+}
+
 CommandMap map[] = {
     {
         "add",
         add
+    },
+    {
+        "clear",
+        clear
     },
 };
 
