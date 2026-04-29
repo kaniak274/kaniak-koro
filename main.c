@@ -1,9 +1,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "sqlite3.h"
 
 #define COMMANDS_COUNT 3
 #define NOTIFICATION_FILENAME "notifications.txt"
+#define DATABASE_FILENAME "notifications.db"
+
+int migrate_db() {
+    sqlite3 *db;
+    char *err_msg = 0;
+
+    sqlite3_open(DATABASE_FILENAME, &db);
+
+    char *notifications_table_sql =
+        "CREATE TABLE IF NOT EXISTS notifications ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "notification TEXT"
+        ");";
+
+    int result = sqlite3_exec(db, notifications_table_sql, NULL, NULL, &err_msg);
+
+    if (result != SQLITE_OK) {
+        printf("failed to create notifications table: %s\n", err_msg);
+        sqlite3_free(err_msg);
+        return 1;
+    }
+
+    sqlite3_close(db);
+    return 0;
+}
 
 typedef int (*CommandFunc)(char *);
 
@@ -88,6 +114,8 @@ CommandFunc get_command_by_name(const char *name) {
 }
 
 int main(int argc, char *argv[]) {
+    migrate_db();
+
     if (argc < 2) {
         printf("usage: %s <command>\n", argv[0]);
         return 1;
