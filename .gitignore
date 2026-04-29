@@ -55,3 +55,6 @@ dkms.conf
 *.dwo
 
 notifications.txt
+notifications.db
+sqlite3.c
+sqlite3.h
