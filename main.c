@@ -79,13 +79,31 @@ int add(char *arg) {
  * @return 0 if successful, 1 if not
  */
 int clear() {
-    FILE *file = fopen(NOTIFICATION_FILENAME, "w");
-    if (file == NULL) {
-        printf("failed to open file\n");
-        return 1;
+    sqlite3 *db;
+
+    sqlite3_open(DATABASE_FILENAME, &db);
+
+    sqlite3_stmt *stmt;
+    int rc;
+
+    const char *sql = "DELETE FROM notifications;";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+
+    if (rc != SQLITE_OK) {
+        printf("failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return rc;
     }
 
-    fclose(file);
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        printf("failed to clear notifications: %s\n", sqlite3_errmsg(db));
+        return rc;
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
     return 0;
 }
 
