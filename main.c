@@ -3,7 +3,7 @@
 #include <string.h>
 #include "sqlite3.h"
 
-#define COMMANDS_COUNT 3
+#define COMMANDS_COUNT 5
 #define NOTIFICATION_FILENAME "notifications.txt"
 #define DATABASE_FILENAME "notifications.db"
 
@@ -23,6 +23,20 @@ int migrate_db() {
 
     if (result != SQLITE_OK) {
         printf("failed to create notifications table: %s\n", err_msg);
+        sqlite3_free(err_msg);
+        return 1;
+    }
+
+    char *project_table_sql =
+        "CREATE TABLE IF NOT EXISTS projects ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "name TEXT"
+        ");";
+
+    int result_projects = sqlite3_exec(db, project_table_sql, NULL, NULL, &err_msg);
+
+    if (result_projects != SQLITE_OK) {
+        printf("failed to create projects table: %s\n", err_msg);
         sqlite3_free(err_msg);
         return 1;
     }
@@ -144,6 +158,70 @@ int list_all() {
     return 0;
 }
 
+int add_project(char *arg) {
+    sqlite3 *db;
+
+    sqlite3_open(DATABASE_FILENAME, &db);
+
+    sqlite3_stmt *stmt;
+    int rc;
+
+    const char *sql = "INSERT INTO projects (name) VALUES (?);";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+
+    if (rc != SQLITE_OK) {
+        printf("failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return rc;
+    }
+
+    sqlite3_bind_text(stmt, 1, arg, -1, SQLITE_TRANSIENT);
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        printf("failed to insert project: %s\n", sqlite3_errmsg(db));
+        return rc;
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    return 0;
+}
+
+int list_projects() {
+    sqlite3 *db;
+
+    sqlite3_open(DATABASE_FILENAME, &db);
+
+    sqlite3_stmt *stmt;
+    int rc;
+
+    const char *sql = "SELECT * FROM projects;";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+
+    if (rc != SQLITE_OK) {
+        printf("failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return rc;
+    }
+
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        const char *message = (const char *)sqlite3_column_text(stmt, 1);
+        printf("%s\n", message);
+    }
+
+    if (rc != SQLITE_DONE) {
+        printf("failed to list projects: %s\n", sqlite3_errmsg(db));
+        return rc;
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
+    return 0;
+}
+
 CommandMap map[] = {
     {
         "add",
@@ -156,6 +234,14 @@ CommandMap map[] = {
     {
         "list",
         list_all
+    },
+    {
+        "addp",
+        add_project
+    },
+    {
+        "listp",
+        list_projects
     },
 };
 
