@@ -44,14 +44,33 @@ typedef struct {
  * @return 0 if successful, 1 if not
  */
 int add(char *arg) {
-    FILE *file = fopen(NOTIFICATION_FILENAME, "a");
-    if (file == NULL) {
-        printf("failed to open file\n");
-        return 1;
+    sqlite3 *db;
+
+    sqlite3_open(DATABASE_FILENAME, &db);
+
+    sqlite3_stmt *stmt;
+    int rc;
+
+    const char *sql = "INSERT INTO notifications (notification) VALUES (?);";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+
+    if (rc != SQLITE_OK) {
+        printf("failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return rc;
     }
 
-    fprintf(file, "%s\n", arg);
-    fclose(file);
+    sqlite3_bind_text(stmt, 1, arg, -1, SQLITE_TRANSIENT);
+
+    rc = sqlite3_step(stmt);
+    if (rc != SQLITE_DONE) {
+        printf("failed to insert notification: %s\n", sqlite3_errmsg(db));
+        return rc;
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
     return 0;
 }
 
@@ -75,17 +94,35 @@ int clear() {
  * @return 0 if successful, 1 if not
  */
 int list_all() {
-    FILE *file = fopen(NOTIFICATION_FILENAME, "r");
-    if (file == NULL) {
-        printf("failed to open file\n");
-        return 1;
+    sqlite3 *db;
+
+    sqlite3_open(DATABASE_FILENAME, &db);
+
+    sqlite3_stmt *stmt;
+    int rc;
+
+    const char *sql = "SELECT * FROM notifications;";
+
+    rc = sqlite3_prepare_v2(db, sql, -1, &stmt, NULL);
+
+    if (rc != SQLITE_OK) {
+        printf("failed to prepare statement: %s\n", sqlite3_errmsg(db));
+        return rc;
     }
 
-    char line[256];
-    while (fgets(line, sizeof(line), file) != NULL) {
-        printf("%s", line);
+    while ((rc = sqlite3_step(stmt)) == SQLITE_ROW) {
+        const char *message = (const char *)sqlite3_column_text(stmt, 1);
+        printf("%s\n", message);
     }
-    fclose(file);
+
+    if (rc != SQLITE_DONE) {
+        printf("failed to list notifications: %s\n", sqlite3_errmsg(db));
+        return rc;
+    }
+
+    sqlite3_finalize(stmt);
+    sqlite3_close(db);
+
     return 0;
 }
 
